@@ -1,11 +1,16 @@
-# Student Registration App (with Pagination)
+# Student Registration App (with Search and Pagination)
 
 A simple full-stack student registration app using HTML, CSS, Vanilla JavaScript, Node.js, Express, and MySQL.
 
 ## Features
+
 - Register a student (POST API)
 - View students (GET API)
-- Pagination: exactly 3 students per page
+- Search by name only (partial match)
+- Search by age only (exact match)
+- Search by both name and age (both conditions must match)
+- Clear search filters
+- Pagination: exactly 3 matching students per page
 - Previous, Next, and numbered page buttons
 - Students are listed by ascending ID
 
@@ -58,19 +63,21 @@ Open `frontend/index.html` with VS Code Live Server.
 
 ### GET `/api/students?page=1&limit=3`
 
-The backend fixes the page size at 3, regardless of the `limit` query parameter. Example response:
+Returns all students, three per page.
 
-```json
-{
-  "data": [
-    { "id": 1, "name": "Aung Aung", "age": 20, "created_at": "2026-11-01T..." }
-  ],
-  "total": 7,
-  "page": 1,
-  "pageSize": 3,
-  "totalPages": 3
-}
-```
+### GET `/api/students?page=1&name=Aung`
+
+Searches names containing `Aung` (case sensitivity follows the MySQL column collation).
+
+### GET `/api/students?page=1&age=20`
+
+Returns students whose age is exactly 20.
+
+### GET `/api/students?page=1&name=Aung&age=20`
+
+Returns students whose name contains `Aung` AND whose age is exactly 20.
+
+Search parameters are optional. The backend applies the search conditions before counting and paginating, so the pagination metadata describes only matching students. The backend uses parameterized SQL queries.
 
 ### POST `/api/students`
 
@@ -84,4 +91,4 @@ The API validates the input and inserts the student using a parameterized SQL qu
 
 ## How pagination works
 
-The backend calculates the SQL offset with `(page - 1) * 3`, then uses `LIMIT 3 OFFSET ?`. It also runs `COUNT(*)` to calculate the total number of pages. The frontend uses that metadata to draw the page buttons.
+The backend calculates the SQL offset with `(page - 1) * 3`, then uses `LIMIT 3 OFFSET ?`. It also runs `COUNT(*)` using the same search conditions to calculate the total number of matching students and pages.

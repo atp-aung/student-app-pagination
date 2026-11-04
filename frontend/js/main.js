@@ -1,22 +1,24 @@
-const API_URL = 'http://localhost:3000/api/students';
+const API_URL = "http://localhost:3000/api/students";
 const PAGE_SIZE = 3;
 
-const studentForm = document.getElementById('student-form');
-const tableBody = document.getElementById('students-table-body');
-const pagination = document.getElementById('pagination');
-const listSummary = document.getElementById('list-summary');
-const message = document.getElementById('message');
-const submitButton = document.getElementById('submit-button');
+const studentForm = document.getElementById("student-form");
+const tableBody = document.getElementById("students-table-body");
+const pagination = document.getElementById("pagination");
+const listSummary = document.getElementById("list-summary");
+const message = document.getElementById("message");
+const submitButton = document.getElementById("submit-button");
 
 let currentPage = 1;
 let totalPages = 1;
 
 async function loadStudents(page = 1) {
-  tableBody.innerHTML = '<tr><td colspan="4" class="empty">Loading...</td></tr>';
+  tableBody.innerHTML =
+    '<tr><td colspan="4" class="empty">Loading...</td></tr>';
   try {
     const response = await fetch(`${API_URL}?page=${page}&limit=${PAGE_SIZE}`);
     const result = await response.json();
-    if (!response.ok) throw new Error(result.message || 'Could not load students.');
+    if (!response.ok)
+      throw new Error(result.message || "Could not load students.");
 
     currentPage = result.page;
     totalPages = result.totalPages;
@@ -28,87 +30,263 @@ async function loadStudents(page = 1) {
     listSummary.textContent = `Showing ${start}-${end} of ${result.total} students`;
   } catch (error) {
     tableBody.innerHTML = `<tr><td colspan="4" class="empty">${escapeHtml(error.message)}</td></tr>`;
-    pagination.innerHTML = '';
-    listSummary.textContent = 'Unable to load student list';
+    pagination.innerHTML = "";
+    listSummary.textContent = "Unable to load student list";
   }
 }
 
 function renderStudents(students) {
   if (students.length === 0) {
-    tableBody.innerHTML = '<tr><td colspan="4" class="empty">No students registered yet.</td></tr>';
+    tableBody.innerHTML =
+      '<tr><td colspan="4" class="empty">No students registered yet.</td></tr>';
     return;
   }
 
-  tableBody.innerHTML = students.map(student => `
+  tableBody.innerHTML = students
+    .map(
+      (student) => `
     <tr>
       <td>${student.id}</td>
       <td>${escapeHtml(student.name)}</td>
       <td>${student.age}</td>
       <td>${new Date(student.created_at).toLocaleString()}</td>
     </tr>
-  `).join('');
+  `,
+    )
+    .join("");
 }
 
 function renderPagination() {
   if (totalPages <= 1) {
-    pagination.innerHTML = '';
+    pagination.innerHTML = "";
     return;
   }
 
-  let html = `<button type="button" data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>`;
+  let html = `<button type="button" data-page="${currentPage - 1}" ${currentPage === 1 ? "disabled" : ""}>Previous</button>`;
   for (let page = 1; page <= totalPages; page++) {
-    html += `<button type="button" data-page="${page}" class="${page === currentPage ? 'active' : ''}" ${page === currentPage ? 'aria-current="page"' : ''}>${page}</button>`;
+    html += `<button type="button" data-page="${page}" class="${page === currentPage ? "active" : ""}" ${page === currentPage ? 'aria-current="page"' : ""}>${page}</button>`;
   }
-  html += `<button type="button" data-page="${currentPage + 1}" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>`;
+  html += `<button type="button" data-page="${currentPage + 1}" ${currentPage === totalPages ? "disabled" : ""}>Next</button>`;
   pagination.innerHTML = html;
 }
 
-pagination.addEventListener('click', event => {
-  const button = event.target.closest('button[data-page]');
+pagination.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-page]");
   if (!button || button.disabled) return;
   loadStudents(Number(button.dataset.page));
 });
 
-studentForm.addEventListener('submit', async event => {
+studentForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  message.textContent = '';
-  message.className = '';
+  message.textContent = "";
+  message.className = "";
   submitButton.disabled = true;
 
   const formData = new FormData(studentForm);
   const student = {
-    name: formData.get('name').trim(),
-    age: Number(formData.get('age'))
+    name: formData.get("name").trim(),
+    age: Number(formData.get("age")),
   };
 
   try {
     const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(student)
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(student),
     });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.message || 'Registration failed.');
+    if (!response.ok) throw new Error(result.message || "Registration failed.");
 
     studentForm.reset();
-    message.textContent = 'Student registered successfully.';
-    message.className = 'success';
+    message.textContent = "Student registered successfully.";
+    message.className = "success";
     // After adding a student, go to the last page so the new record is visible.
     const countResponse = await fetch(`${API_URL}?page=1&limit=${PAGE_SIZE}`);
     const countResult = await countResponse.json();
     await loadStudents(countResult.totalPages || 1);
   } catch (error) {
     message.textContent = error.message;
-    message.className = 'error';
+    message.className = "error";
+  } finally {
+    submitButton.disabled = false;
+  }
+});
+const API_URL = "http://localhost:3000/api/students";
+const PAGE_SIZE = 3;
+
+const studentForm = document.getElementById("student-form");
+const searchForm = document.getElementById("search-form");
+const searchNameInput = document.getElementById("search-name");
+const searchAgeInput = document.getElementById("search-age");
+const clearSearchButton = document.getElementById("clear-search-button");
+const tableBody = document.getElementById("students-table-body");
+const pagination = document.getElementById("pagination");
+const listSummary = document.getElementById("list-summary");
+const message = document.getElementById("message");
+const submitButton = document.getElementById("submit-button");
+
+let currentPage = 1;
+let totalPages = 1;
+let currentSearchName = "";
+let currentSearchAge = "";
+
+async function loadStudents(page = 1) {
+  tableBody.innerHTML =
+    '<tr><td colspan="4" class="empty">Loading...</td></tr>';
+
+  const query = new URLSearchParams({
+    page: String(page),
+    limit: String(PAGE_SIZE),
+  });
+
+  if (currentSearchName) query.set("name", currentSearchName);
+  if (currentSearchAge) query.set("age", currentSearchAge);
+
+  try {
+    const response = await fetch(`${API_URL}?${query.toString()}`);
+    const result = await response.json();
+    if (!response.ok)
+      throw new Error(result.message || "Could not load students.");
+
+    currentPage = result.page;
+    totalPages = result.totalPages;
+    renderStudents(result.data);
+    renderPagination();
+
+    const start = result.total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+    const end = Math.min(currentPage * PAGE_SIZE, result.total);
+    listSummary.textContent = `Showing ${start}-${end} of ${result.total} students`;
+  } catch (error) {
+    tableBody.innerHTML = `<tr><td colspan="4" class="empty">${escapeHtml(error.message)}</td></tr>`;
+    pagination.innerHTML = "";
+    listSummary.textContent = "Unable to load student list";
+  }
+}
+
+function renderStudents(students) {
+  if (students.length === 0) {
+    tableBody.innerHTML =
+      '<tr><td colspan="4" class="empty">No matching students found.</td></tr>';
+    return;
+  }
+
+  tableBody.innerHTML = students
+    .map(
+      (student) => `
+    <tr>
+      <td>${student.id}</td>
+      <td>${escapeHtml(student.name)}</td>
+      <td>${student.age}</td>
+      <td>${new Date(student.created_at).toLocaleString()}</td>
+    </tr>
+  `,
+    )
+    .join("");
+}
+
+function renderPagination() {
+  if (totalPages <= 1) {
+    pagination.innerHTML = "";
+    return;
+  }
+
+  let html = `<button type="button" data-page="${currentPage - 1}" ${currentPage === 1 ? "disabled" : ""}>Previous</button>`;
+  for (let page = 1; page <= totalPages; page++) {
+    html += `<button type="button" data-page="${page}" class="${page === currentPage ? "active" : ""}" ${page === currentPage ? 'aria-current="page"' : ""}>${page}</button>`;
+  }
+  html += `<button type="button" data-page="${currentPage + 1}" ${currentPage === totalPages ? "disabled" : ""}>Next</button>`;
+  pagination.innerHTML = html;
+}
+
+pagination.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-page]");
+  if (!button || button.disabled) return;
+  loadStudents(Number(button.dataset.page));
+});
+
+searchForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  currentSearchName = searchNameInput.value.trim();
+  currentSearchAge = searchAgeInput.value.trim();
+
+  // A new search always starts from the first result page.
+  loadStudents(1);
+});
+
+clearSearchButton.addEventListener("click", () => {
+  searchForm.reset();
+  currentSearchName = "";
+  currentSearchAge = "";
+  loadStudents(1);
+});
+
+studentForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  message.textContent = "";
+  message.className = "";
+  submitButton.disabled = true;
+
+  const formData = new FormData(studentForm);
+  const student = {
+    name: formData.get("name").trim(),
+    age: Number(formData.get("age")),
+  };
+
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(student),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || "Registration failed.");
+
+    studentForm.reset();
+    searchForm.reset();
+    currentSearchName = "";
+    currentSearchAge = "";
+    message.textContent = "Student registered successfully.";
+    message.className = "success";
+
+    // Clear active filters so the newly registered student is visible.
+    await loadStudents(1);
+  } catch (error) {
+    message.textContent = error.message;
+    message.className = "error";
   } finally {
     submitButton.disabled = false;
   }
 });
 
 function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, char => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  })[char]);
+  return String(value).replace(
+    /[&<>"']/g,
+    (char) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[char],
+  );
+}
+
+loadStudents();
+
+function escapeHtml(value) {
+  return String(value).replace(
+    /[&<>"']/g,
+    (char) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[char],
+  );
 }
 
 loadStudents();
