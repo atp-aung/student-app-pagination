@@ -47,11 +47,9 @@ app.get("/api/students", async (req, res) => {
     if (ageValue !== undefined && ageValue !== "") {
       const age = Number(ageValue);
       if (!Number.isInteger(age) || age < 1 || age > 120) {
-        return res
-          .status(400)
-          .json({
-            message: "Age search must be a whole number between 1 and 120.",
-          });
+        return res.status(400).json({
+          message: "Age search must be a whole number between 1 and 120.",
+        });
       }
       conditions.push("age = ?");
       params.push(age);
@@ -74,7 +72,7 @@ app.get("/api/students", async (req, res) => {
       `SELECT id, name, age, created_at
        FROM students
        ${whereClause}
-       ORDER BY id ASC
+       ORDER BY id DESC
        LIMIT ? OFFSET ?`,
       [...params, limit, offset],
     );
